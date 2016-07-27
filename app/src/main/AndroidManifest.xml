@@ -34,6 +34,9 @@
         <meta-data
             android:name="android.nfc.disable_beam_default"
             android:value="true" />
+        <service android:name=".WifiService">
+
+        </service>
     </application>
 
 </manifest>
