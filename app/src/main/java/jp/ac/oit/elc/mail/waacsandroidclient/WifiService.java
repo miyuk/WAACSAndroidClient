@@ -18,61 +18,68 @@ import android.util.Log;
 /**
  * Created by e1611100 on 2016/07/23.
  */
-public class WifiService extends Service {
+public class WifiService extends Service{
     private static final String TAG = WifiService.class.getSimpleName();
     private WifiManager mWifiManager;
     private WifiConfiguration mWifiConfig;
-    private IBinder mBinder;
-    private BroadcastReceiver wifiStateChangeReceiver = new BroadcastReceiver() {
+    private ServiceBinder mBinder;
+    private int mLastStatus;
+    private StatusChangedListener mStatusChangedListener;
+
+    @Override
+    public void onDestroy() {
+        Log.d(TAG, "onDestroy");
+        super.onDestroy();
+    }
+
+    private BroadcastReceiver mStatusChangedReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             WifiInfo info = mWifiManager.getConnectionInfo();
-            String receivedSsid = info.getSSID();
+            Log.d(TAG, String.format("Wi-Fi情報更新: %s", info.toString()));
+            if(mWifiConfig == null || mWifiConfig.SSID != info.getSSID()){
+                return;
+            }
             SupplicantState state = (SupplicantState) intent.getExtras().get(WifiManager.EXTRA_NEW_STATE);
-            switch (state) {
-                case COMPLETED:
-                case GROUP_HANDSHAKE:
-                case FOUR_WAY_HANDSHAKE:
-                case ASSOCIATED:
-                    //TODO onConnected
-                    break;
-                case ASSOCIATING:
-                case AUTHENTICATING:
-                case SCANNING:
-                    //TODO onConnecting
-                    break;
-                case DORMANT:
-                case DISCONNECTED:
-                case INACTIVE:
-                case INTERFACE_DISABLED:
-                case INVALID:
-                case UNINITIALIZED:
-                default:
-                    //TODO onDisconnected
-                    break;
+            int currentStatus = WifiStatus.fromSupplicantState(state);
+            if(currentStatus != mLastStatus){
+                mLastStatus = currentStatus;
+                if(mStatusChangedListener != null){
+                    mStatusChangedListener.onStatusChanged(mWifiConfig, currentStatus);
+                }
             }
         }
     };
 
     @Override
     public void onCreate() {
+        Log.d(TAG, "onCreate");
         super.onCreate();
         mWifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
+        mStatusChangedListener = null;
+        mWifiConfig = null;
+        mBinder = new ServiceBinder();;
+        mLastStatus = WifiStatus.UNKNOWN;
     }
 
     @Override
     public boolean onUnbind(Intent intent) {
-        unregisterReceiver(wifiStateChangeReceiver);
+        Log.d(TAG, "onUnbind");
+        unregisterReceiver(mStatusChangedReceiver);
         return super.onUnbind(intent);
     }
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(WifiManager.SUPPLICANT_STATE_CHANGED_ACTION);
-        registerReceiver(wifiStateChangeReceiver, filter);
+        Log.d(TAG, "onBind");
+        IntentFilter filter = new IntentFilter(WifiManager.SUPPLICANT_STATE_CHANGED_ACTION);
+        registerReceiver(mStatusChangedReceiver, filter);
         return mBinder;
+    }
+
+    public void setWifiStatusChangedListener(StatusChangedListener listener){
+        mStatusChangedListener = listener;
     }
 
     public boolean connectWifi(String ssid, String userId, String password) {
@@ -104,9 +111,14 @@ public class WifiService extends Service {
         return mWifiConfig;
     }
 
-    public class WifiServiceBinder extends Binder {
+    public class ServiceBinder extends Binder {
+        public ServiceBinder(){
+        }
         public WifiService getService() {
             return WifiService.this;
         }
+    }
+    public interface StatusChangedListener{
+        void onStatusChanged(WifiConfiguration config, int status);
     }
 }

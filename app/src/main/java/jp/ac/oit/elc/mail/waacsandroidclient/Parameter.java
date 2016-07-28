@@ -3,6 +3,10 @@ package jp.ac.oit.elc.mail.waacsandroidclient;
 import android.util.JsonReader;
 import android.util.JsonWriter;
 
+import org.json.JSONException;
+
+import java.io.IOError;
+import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Date;
@@ -25,33 +29,28 @@ public class Parameter {
         expirationTime = null;
     }
 
-    public static Parameter parse(String jsonText) {
+    public static Parameter parse(String jsonText) throws IOException{
         JsonReader reader = new JsonReader(new StringReader(jsonText));
         Parameter parameter = new Parameter();
-        try {
-            reader.beginObject();
-            while (reader.hasNext()) {
-                String name = reader.nextName();
-                if (Attribute.SSID.equals(name)) {
-                    parameter.ssid = reader.nextString();
-                } else if (Attribute.USER_ID.equals(name)) {
-                    parameter.userId = reader.nextString();
-                } else if (Attribute.PASSWORD.equals(name)) {
-                    parameter.password = reader.nextString();
-                } else if (Attribute.ISSUANCE_TIME.equals(name)) {
-                    parameter.issuanceTime = StringUtils.parseDate(reader.nextString());
-                } else if (Attribute.EXPIRATION_TIME.equals(name)) {
-                    parameter.expirationTime = StringUtils.parseDate(reader.nextString());
-                } else {
-                    reader.skipValue();
-                }
+        reader.beginObject();
+        while (reader.hasNext()) {
+            String name = reader.nextName();
+            if (Attribute.SSID.equals(name)) {
+                parameter.ssid = reader.nextString();
+            } else if (Attribute.USER_ID.equals(name)) {
+                parameter.userId = reader.nextString();
+            } else if (Attribute.PASSWORD.equals(name)) {
+                parameter.password = reader.nextString();
+            } else if (Attribute.ISSUANCE_TIME.equals(name)) {
+                parameter.issuanceTime = StringUtils.parseDate(reader.nextString());
+            } else if (Attribute.EXPIRATION_TIME.equals(name)) {
+                parameter.expirationTime = StringUtils.parseDate(reader.nextString());
+            } else {
+                reader.skipValue();
             }
-            reader.endObject();
-            return parameter;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
         }
+        reader.endObject();
+        return parameter;
     }
 
     public String toJson() {
@@ -82,7 +81,11 @@ public class Parameter {
             e.printStackTrace();
             return null;
         }
+    }
 
+    @Override
+    public String toString() {
+        return String.format("ssid: %s, user_id: %s, password: %s, issuance_time: %s, expiration_time: %s", ssid, userId, password, issuanceTime.toString(), expirationTime.toString());
     }
 
     public static final class Attribute {

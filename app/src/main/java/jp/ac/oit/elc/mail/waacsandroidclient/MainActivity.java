@@ -5,9 +5,12 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
+import android.nfc.NfcManager;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcelable;
@@ -24,6 +27,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -39,43 +43,44 @@ public class MainActivity extends AppCompatActivity {
     private TextView textIssuanceTime;
     private TextView textExpirationTime;
     private TextView textLog;
-//    private Handler mUiHandler = new Handler() {
-//        @Override
-//        public void handleMessage(Message msg) {
-//            super.handleMessage(msg);
-//            int status = msg.arg1;
-//            String authState = msg.obj.toString();
-//            switch (status) {
-//                case WifiConnector.WifiStatus.CONNECTED:
-//                    writeLog("Wi-Fi接続完了: " + authState);
-//
-//                    imageStatus.setImageResource(R.drawable.connected);
-//                    break;
-//                case WifiConnector.WifiStatus.CONNECTING:
-//                    writeLog("Wi-Fi接続中: " + authState);
-//                    imageStatus.setImageResource(R.drawable.connecting);
-//                    break;
-//                case WifiConnector.WifiStatus.DISCONNECTED:
-//                    writeLog("Wi-Fi切断: " + authState);
-//                    imageStatus.setImageResource(R.drawable.unconnected);
-//                    break;
-//                default:
-//                    break;
-//            }
-//        }
-//    };
+
+    @Override
+    protected void onDestroy() {
+        Log.d(TAG, "onDestroy");
+        super.onDestroy();
+    }
+
+
+
+
+    private WifiService.StatusChangedListener mWifiStatusChangedListener = new WifiService.StatusChangedListener() {
+        @Override
+        public void onStatusChanged(WifiConfiguration config, int status) {
+            if(status == WifiStatus.CONNECTED){
+                writeLog(String.format(Locale.JAPAN, "Wi-Fi接続完了: %d", status));
+                imageStatus.setImageResource(R.drawable.connected);
+            }else if(status == WifiStatus.CONNECTING){
+                writeLog(String.format("Wi-Fi接続中: %d", status));
+                imageStatus.setImageResource(R.drawable.connecting);
+            }else{
+                writeLog(String.format("Wi-Fi切断: %d", status));
+                imageStatus.setImageResource(R.drawable.disconnected);
+            }
+        }
+    };
 
     private ServiceConnection mWifiServiceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-            Log.d(TAG, String.format("サービス接続：%s", componentName.getClassName()));
-            WifiService.WifiServiceBinder binder = (WifiService.WifiServiceBinder) iBinder;
+            Log.d(TAG, String.format("サービス接続: %s", componentName.getShortClassName()));
+            WifiService.ServiceBinder binder = (WifiService.ServiceBinder) iBinder;
             mWifiService = binder.getService();
+            mWifiService.setWifiStatusChangedListener(mWifiStatusChangedListener);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName componentName) {
-            Log.d(TAG, String.format("サービス切断：%s", componentName.getClassName()));
+            Log.d(TAG, String.format("サービス異常切断: %s", componentName.getShortClassName()));
             mWifiService = null;
         }
     };
@@ -134,100 +139,94 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onStop() {
+        Log.d(TAG, "onStop");
         super.onStop();
-        unbindService(mWifiServiceConnection);
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate");
+        super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         assignViews();
-
-        String[] permissions = getRequiredPermissions();
-        List<String> requestedPermissions = new ArrayList<>();
-        for (String permission : permissions) {
-            if (ActivityCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                requestedPermissions.add(permission);
-            }
-        }
-        if (requestedPermissions.size() == 0) {
-            mHasRequiredPermissions = true;
-        } else {
-            ActivityCompat.requestPermissions(this, (String[]) requestedPermissions.toArray(), 0);
-        }
+//        String[] permissions = getRequiredPermissions();
+//        List<String> requestedPermissions = new ArrayList<>();
+//        for (String permission : permissions) {
+//            if (ActivityCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+//                requestedPermissions.add(permission);
+//            }
+//        }
+//        if (requestedPermissions.size() == 0) {
+//            mHasRequiredPermissions = true;
+//        } else {
+//            ActivityCompat.requestPermissions(this, (String[]) requestedPermissions.toArray(), 0);
+//        }
         mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
         if (!mNfcAdapter.isEnabled()) {
             startActivity(new Intent(Settings.ACTION_NFC_SETTINGS));
         }
-        if (!mNfcAdapter.isNdefPushEnabled()) {
-            startActivity(new Intent(Settings.ACTION_NFCSHARING_SETTINGS));
-        }
-        bindService(new Intent(this, WifiService.class), mWifiServiceConnection, BIND_AUTO_CREATE);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        unbindService(mWifiServiceConnection);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        bindService(new Intent(this, WifiService.class), mWifiServiceConnection, BIND_AUTO_CREATE);
         //intent内のNDEFメッセージを取得後、次のintentのためにnullにする
         Intent intent = getIntent();
-        if (intent == null) {
-            return;
-        }
         setIntent(null);
-        String msg = getWaacsMessage(intent);
-        if (msg == null) {
-            return;
+        if (intent != null && NfcAdapter.ACTION_NDEF_DISCOVERED.equals(intent.getAction())) {
+            Log.i(TAG, String.format("NDEFメッセージ受信: %s", intent.toString()));
+            writeLog("NFCメッセージ受信");
+            //IntentからNDEFメッセージを取り出し
+            Parcelable[] rawMessages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
+            NdefMessage ndefMessage = (NdefMessage) rawMessages[0];
+            Parameter param = null;
+            try{
+                param = parseWaacsMessage(ndefMessage);
+            }catch (Exception e){
+                e.printStackTrace();
+                writeLog("NFC受信エラー");
+                return;
+            }
+            //受け取ったパラメータを画面表示
+            displayParameter(param);
+            //パラメータを使ってWifi接続
+            if (mWifiService != null) {
+                writeLog("Wi-Fi接続処理開始");
+                mWifiService.connectWifi(param.ssid, param.userId, param.password);
+            }
         }
+    }
+    private Parameter parseWaacsMessage(NdefMessage ndefMessage) throws Exception{
+        NdefRecord topRecord = ndefMessage.getRecords()[0];
+        //NDEF Messageがext:waacs:msgか確認
+        if (topRecord.getTnf() != NdefRecord.TNF_EXTERNAL_TYPE || !WAACS_MESSAGE_RECORD_TYPE.equals(new String(topRecord.getType()))) {
+            throw new Exception("RecordTypeの不一致");
+        }
+        String jsonText = getNdefPayload(ndefMessage);
         //payloadをパラメータに変換
-        Parameter param = Parameter.parse(msg);
-        //受け取ったパラメータを画面表示
-        displayParameter(param);
-        //パラメータを使ってWifi接続
-        writeLog("Wi-Fi接続処理開始");
-        Log.d(TAG, "接続開始");
-        if (mWifiService != null) {
-            mWifiService.connectWifi(param.ssid, param.userId, param.password);
-        }
+        Parameter param = Parameter.parse(jsonText);
+        return param;
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(intent.getAction())) {
-            Log.i(TAG, "receive NDEF intent");
-            setIntent(intent);
-        } else {
-            Log.w(TAG, "can't understand receiving intent");
-            setIntent(null);
-        }
+        setIntent(intent);
     }
 
-    private String getWaacsMessage(Intent intent) {
-        if (!NfcAdapter.ACTION_NDEF_DISCOVERED.equals(intent.getAction())) {
-            return null;
-        }
-        writeLog("NFCメッセージ受信");
-        //IntentからNDEFメッセージを取り出し
-        Parcelable[] rawMessages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
-        NdefMessage ndefMessage = (NdefMessage) rawMessages[0];
-        NdefRecord topRecord = ndefMessage.getRecords()[0];
-        //NDEF Recordがext:waacs:msgでなければreturn null
-        if (topRecord.getTnf() != NdefRecord.TNF_EXTERNAL_TYPE || !WAACS_MESSAGE_RECORD_TYPE.equals(new String(topRecord.getType()))) {
-            Log.e(TAG, "empty waacs message");
-            return null;
-        }
-        String payload = "";
+    private String getNdefPayload(NdefMessage ndefMessage) {
+        StringBuilder builder = new StringBuilder();
         for (NdefRecord record : ndefMessage.getRecords()) {
-            payload += new String(record.getPayload());
+            builder.append(new String(record.getPayload()));
         }
-        return payload;
+        return builder.toString();
     }
 
     private void displayParameter(Parameter parameter) {
