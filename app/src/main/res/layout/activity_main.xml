@@ -19,9 +19,9 @@
 
         <ImageView
             android:id="@+id/imageStatus"
-            android:contentDescription="statusImage"
             android:layout_width="wrap_content"
             android:layout_height="200dp"
+            android:contentDescription="statusImage"
             android:scaleType="fitCenter"
             android:src="@drawable/disconnected" />
 
