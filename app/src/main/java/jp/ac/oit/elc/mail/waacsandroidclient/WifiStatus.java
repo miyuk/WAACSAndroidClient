@@ -6,6 +6,11 @@ import android.net.wifi.SupplicantState;
  * Created by e1611100 on 2016/07/27.
  */
 public final class WifiStatus {
+    public final static int CONNECTED = 1;
+    public final static int CONNECTING = 2;
+    public final static int DISCONNECTED = -1;
+    public final static int UNKNOWN = -2;
+
     public static int fromSupplicantState(SupplicantState supplicantState) {
         switch (supplicantState) {
             case COMPLETED:
@@ -28,9 +33,4 @@ public final class WifiStatus {
                 return UNKNOWN;
         }
     }
-
-    public final static int CONNECTED = 1;
-    public final static int CONNECTING = 2;
-    public final static int DISCONNECTED = -1;
-    public final static int UNKNOWN = -2;
 }

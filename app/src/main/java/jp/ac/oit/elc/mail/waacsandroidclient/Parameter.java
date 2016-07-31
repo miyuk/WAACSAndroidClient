@@ -3,9 +3,6 @@ package jp.ac.oit.elc.mail.waacsandroidclient;
 import android.util.JsonReader;
 import android.util.JsonWriter;
 
-import org.json.JSONException;
-
-import java.io.IOError;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -29,7 +26,7 @@ public class Parameter {
         expirationTime = null;
     }
 
-    public static Parameter parse(String jsonText) throws IOException{
+    public static Parameter parse(String jsonText) throws IOException {
         JsonReader reader = new JsonReader(new StringReader(jsonText));
         Parameter parameter = new Parameter();
         reader.beginObject();

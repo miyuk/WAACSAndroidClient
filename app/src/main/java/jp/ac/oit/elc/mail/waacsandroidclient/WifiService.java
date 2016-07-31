@@ -18,38 +18,37 @@ import android.util.Log;
 /**
  * Created by e1611100 on 2016/07/23.
  */
-public class WifiService extends Service{
+public class WifiService extends Service {
     private static final String TAG = WifiService.class.getSimpleName();
     private WifiManager mWifiManager;
     private WifiConfiguration mWifiConfig;
     private ServiceBinder mBinder;
     private int mLastStatus;
     private StatusChangedListener mStatusChangedListener;
+    private BroadcastReceiver mStatusChangedReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            WifiInfo info = mWifiManager.getConnectionInfo();
+            Log.d(TAG, String.format("Wi-Fi情報更新: %s", info.toString()));
+            if (mWifiConfig == null || !mWifiConfig.SSID.equals(info.getSSID())) {
+                return;
+            }
+            SupplicantState state = (SupplicantState) intent.getExtras().get(WifiManager.EXTRA_NEW_STATE);
+            int currentStatus = WifiStatus.fromSupplicantState(state);
+            if (currentStatus != mLastStatus) {
+                mLastStatus = currentStatus;
+                if (mStatusChangedListener != null) {
+                    mStatusChangedListener.onStatusChanged(mWifiConfig, currentStatus);
+                }
+            }
+        }
+    };
 
     @Override
     public void onDestroy() {
         Log.d(TAG, "onDestroy");
         super.onDestroy();
     }
-
-    private BroadcastReceiver mStatusChangedReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            WifiInfo info = mWifiManager.getConnectionInfo();
-            Log.d(TAG, String.format("Wi-Fi情報更新: %s", info.toString()));
-            if(mWifiConfig == null || !mWifiConfig.SSID.equals(info.getSSID())){
-                return;
-            }
-            SupplicantState state = (SupplicantState) intent.getExtras().get(WifiManager.EXTRA_NEW_STATE);
-            int currentStatus = WifiStatus.fromSupplicantState(state);
-            if(currentStatus != mLastStatus){
-                mLastStatus = currentStatus;
-                if(mStatusChangedListener != null){
-                    mStatusChangedListener.onStatusChanged(mWifiConfig, currentStatus);
-                }
-            }
-        }
-    };
 
     @Override
     public void onCreate() {
@@ -58,7 +57,8 @@ public class WifiService extends Service{
         mWifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
         mStatusChangedListener = null;
         mWifiConfig = null;
-        mBinder = new ServiceBinder();;
+        mBinder = new ServiceBinder();
+        ;
         mLastStatus = WifiStatus.UNKNOWN;
     }
 
@@ -78,7 +78,7 @@ public class WifiService extends Service{
         return mBinder;
     }
 
-    public void setWifiStatusChangedListener(StatusChangedListener listener){
+    public void setWifiStatusChangedListener(StatusChangedListener listener) {
         mStatusChangedListener = listener;
     }
 
@@ -112,14 +112,16 @@ public class WifiService extends Service{
         return mWifiConfig;
     }
 
+    public interface StatusChangedListener {
+        void onStatusChanged(WifiConfiguration config, int status);
+    }
+
     public class ServiceBinder extends Binder {
-        public ServiceBinder(){
+        public ServiceBinder() {
         }
+
         public WifiService getService() {
             return WifiService.this;
         }
-    }
-    public interface StatusChangedListener{
-        void onStatusChanged(WifiConfiguration config, int status);
     }
 }
