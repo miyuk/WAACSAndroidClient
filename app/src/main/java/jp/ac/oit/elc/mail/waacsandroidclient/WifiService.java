@@ -37,7 +37,7 @@ public class WifiService extends Service{
         public void onReceive(Context context, Intent intent) {
             WifiInfo info = mWifiManager.getConnectionInfo();
             Log.d(TAG, String.format("Wi-Fi情報更新: %s", info.toString()));
-            if(mWifiConfig == null || mWifiConfig.SSID != info.getSSID()){
+            if(mWifiConfig == null || !mWifiConfig.SSID.equals(info.getSSID())){
                 return;
             }
             SupplicantState state = (SupplicantState) intent.getExtras().get(WifiManager.EXTRA_NEW_STATE);
@@ -83,6 +83,7 @@ public class WifiService extends Service{
     }
 
     public boolean connectWifi(String ssid, String userId, String password) {
+        Log.d(TAG, String.format("ssid: %s, userId: %s, password: %s", ssid, userId, password));
         WifiConfiguration config = new WifiConfiguration();
         WifiEnterpriseConfig eapConfig = new WifiEnterpriseConfig();
         config.SSID = "\"" + ssid + "\"";
