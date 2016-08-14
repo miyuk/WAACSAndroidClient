@@ -98,9 +98,7 @@ public class WifiService extends Service {
             Log.e(TAG, "ネットワーク設定の追加失敗");
             return false;
         }
-        mWifiManager.saveConfiguration();
-        mWifiManager.updateNetwork(config);
-        if (!mWifiManager.enableNetwork(networkId, true)) {
+        if (!mWifiManager.saveConfiguration() || !mWifiManager.enableNetwork(networkId, true) || !mWifiManager.reconnect()) {
             Log.e(TAG, "ネットワーク設定の有効化失敗");
             return false;
         }

@@ -16,6 +16,7 @@ import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -160,29 +161,24 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private Parameter parseWaacsMessage(NdefMessage ndefMessage) throws Exception {
-        NdefRecord topRecord = ndefMessage.getRecords()[0];
         //NDEF Messageがext:waacs:msgか確認
-        if (topRecord.getTnf() != NdefRecord.TNF_EXTERNAL_TYPE || !WAACS_MESSAGE_RECORD_TYPE.equals(new String(topRecord.getType()))) {
-            throw new Exception("RecordTypeの不一致");
+        for (NdefRecord record : ndefMessage.getRecords()) {
+            if (record.getTnf() == NdefRecord.TNF_EXTERNAL_TYPE && WAACS_MESSAGE_RECORD_TYPE.equals(new String(record.getType()))) {
+                String jsonText = new String(record.getPayload());
+                try {
+                    return Parameter.parse(jsonText);
+                } catch (IOException e) {
+                    continue;
+                }
+            }
         }
-        String jsonText = getNdefPayload(ndefMessage);
-        //payloadをパラメータに変換
-        Parameter param = Parameter.parse(jsonText);
-        return param;
+        throw new Exception("RecordTypeの不一致");
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-    }
-
-    private String getNdefPayload(NdefMessage ndefMessage) {
-        StringBuilder builder = new StringBuilder();
-        for (NdefRecord record : ndefMessage.getRecords()) {
-            builder.append(new String(record.getPayload()));
-        }
-        return builder.toString();
     }
 
     private void displayParameter(Parameter parameter) {
