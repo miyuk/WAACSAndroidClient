@@ -13,12 +13,24 @@ import android.os.Parcelable;
 import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+
+import org.asynchttpclient.AsyncHttpClient;
+import org.asynchttpclient.DefaultAsyncHttpClient;
+import org.asynchttpclient.Response;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -34,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView textIssuanceTime;
     private TextView textExpirationTime;
     private TextView textLog;
+    private Button buttonQrScan;
     private WifiService.StatusChangedListener mWifiStatusChangedListener = new WifiService.StatusChangedListener() {
         @Override
         public void onStatusChanged(WifiConfiguration config, int status) {
@@ -49,11 +62,46 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
+    private View.OnClickListener onClickButtonQrScanListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            IntentIntegrator integrator = new IntentIntegrator(MainActivity.this);
+            integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE_TYPES);
+            integrator.setPrompt("QRコードを読み込んでください");
+            integrator.setCameraId(0);
+            integrator.setBeepEnabled(true);
+            integrator.setBarcodeImageEnabled(true);
+            integrator.setOrientationLocked(false);
+            integrator.initiateScan();
+        }
+    };
 
     @Override
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
         super.onDestroy();
+    }
+
+    private void requestWifiAuth(String url) {
+        AsyncHttpClient client = new DefaultAsyncHttpClient();
+        try {
+            Response res = client.prepareGet(url).execute().get();
+            String body = res.getResponseBody();
+            Parameter param = Parameter.parse(body);
+            connectWifi(param);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            return;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return;
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+            return;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
     }
 
     private void assignViews() {
@@ -64,6 +112,8 @@ public class MainActivity extends AppCompatActivity {
         textIssuanceTime = (TextView) findViewById(R.id.textRegistTime);
         textExpirationTime = (TextView) findViewById(R.id.textExpireTime);
         textLog = (TextView) findViewById(R.id.textLog);
+        buttonQrScan = (Button) findViewById(R.id.buttonQrScan);
+        buttonQrScan.setOnClickListener(onClickButtonQrScanListener);
     }
 
     private void writeLog(String message) {
@@ -76,6 +126,21 @@ public class MainActivity extends AppCompatActivity {
         builder.append(message);
         builder.append("\n");
         textLog.setText(builder.toString());
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if (result != null) {
+            if (result.getContents() == null) {
+                Toast.makeText(this, "Cancelled", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(this, "Scanned: " + result.getContents(), Toast.LENGTH_LONG).show();
+                requestWifiAuth(result.getContents());
+            }
+        } else {
+            super.onActivityResult(requestCode, resultCode, data);
+        }
     }
 
     @Override
