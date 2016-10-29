@@ -19,12 +19,13 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
-import org.asynchttpclient.AsyncHttpClient;
-import org.asynchttpclient.DefaultAsyncHttpClient;
-import org.asynchttpclient.Response;
+//import org.asynchttpclient.AsyncHttpClient;
+//import org.asynchttpclient.DefaultAsyncHttpClient;
+//import org.asynchttpclient.Response;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -32,12 +33,11 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.ExecutionException;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, WifiService.StatusChangedListener{
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String WAACS_MESSAGE_RECORD_TYPE = "waacs:msg";
     private NfcAdapter mNfcAdapter;
-    private ImageView imageStatus;
     private WifiService mWifiService;
     private ServiceConnection mConnection;
     private TextView textSsid;
@@ -46,108 +46,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView textIssuanceTime;
     private TextView textExpirationTime;
     private TextView textLog;
+    private ImageView imageStatus;
     private Button buttonQrScan;
-    private WifiService.StatusChangedListener mWifiStatusChangedListener = new WifiService.StatusChangedListener() {
-        @Override
-        public void onStatusChanged(WifiConfiguration config, int status) {
-            if (status == WifiStatus.CONNECTED) {
-                writeLog("Wi-Fi接続完了");
-                imageStatus.setImageResource(R.drawable.connected);
-            } else if (status == WifiStatus.CONNECTING) {
-                writeLog("Wi-Fi接続中");
-                imageStatus.setImageResource(R.drawable.connecting);
-            } else {
-                writeLog("Wi-Fi切断");
-                imageStatus.setImageResource(R.drawable.disconnected);
-            }
-        }
-    };
-    private View.OnClickListener onClickButtonQrScanListener = new View.OnClickListener() {
-        @Override
-        public void onClick(View view) {
-            IntentIntegrator integrator = new IntentIntegrator(MainActivity.this);
-            integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE_TYPES);
-            integrator.setPrompt("QRコードを読み込んでください");
-            integrator.setCameraId(0);
-            integrator.setBeepEnabled(true);
-            integrator.setBarcodeImageEnabled(true);
-            integrator.setOrientationLocked(false);
-            integrator.initiateScan();
-        }
-    };
-
-    @Override
-    protected void onDestroy() {
-        Log.d(TAG, "onDestroy");
-        super.onDestroy();
-    }
-
-    private void requestWifiAuth(String url) {
-        AsyncHttpClient client = new DefaultAsyncHttpClient();
-        try {
-            Response res = client.prepareGet(url).execute().get();
-            String body = res.getResponseBody();
-            Parameter param = Parameter.parse(body);
-            connectWifi(param);
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-            return;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            return;
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-            return;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        }
-    }
-
-    private void assignViews() {
-        imageStatus = (ImageView) findViewById(R.id.imageStatus);
-        textSsid = (TextView) findViewById(R.id.textSsid);
-        textUserId = (TextView) findViewById(R.id.textUserId);
-        textPassword = (TextView) findViewById(R.id.textPassword);
-        textIssuanceTime = (TextView) findViewById(R.id.textRegistTime);
-        textExpirationTime = (TextView) findViewById(R.id.textExpireTime);
-        textLog = (TextView) findViewById(R.id.textLog);
-        buttonQrScan = (Button) findViewById(R.id.buttonQrScan);
-        buttonQrScan.setOnClickListener(onClickButtonQrScanListener);
-    }
-
-    private void writeLog(String message) {
-        StringBuilder builder = new StringBuilder();
-        Date now = new Date();
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss.SSS");
-        builder.append(textLog.getText());
-        builder.append(sdf.format(now));
-        builder.append(": ");
-        builder.append(message);
-        builder.append("\n");
-        textLog.setText(builder.toString());
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-        if (result != null) {
-            if (result.getContents() == null) {
-                Toast.makeText(this, "Cancelled", Toast.LENGTH_LONG).show();
-            } else {
-                Toast.makeText(this, "Scanned: " + result.getContents(), Toast.LENGTH_LONG).show();
-                requestWifiAuth(result.getContents());
-            }
-        } else {
-            super.onActivityResult(requestCode, resultCode, data);
-        }
-    }
-
-    @Override
-    protected void onStop() {
-        Log.d(TAG, "onStop");
-        super.onStop();
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -161,14 +61,16 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (mConnection != null) {
-            unbindService(mConnection);
-            mConnection = null;
-            mWifiService = null;
-        }
+    private void assignViews() {
+        imageStatus = (ImageView) findViewById(R.id.imageStatus);
+        textSsid = (TextView) findViewById(R.id.textSsid);
+        textUserId = (TextView) findViewById(R.id.textUserId);
+        textPassword = (TextView) findViewById(R.id.textPassword);
+        textIssuanceTime = (TextView) findViewById(R.id.textRegistTime);
+        textExpirationTime = (TextView) findViewById(R.id.textExpireTime);
+        textLog = (TextView) findViewById(R.id.textLog);
+        buttonQrScan = (Button) findViewById(R.id.buttonQrScan);
+        buttonQrScan.setOnClickListener(this);
     }
 
     @Override
@@ -200,6 +102,47 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    //NFCはすべてonResume()で処理
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+    }
+
+    private void writeLog(String message) {
+        StringBuilder builder = new StringBuilder();
+        Date now = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss.SSS");
+        builder.append(textLog.getText());
+        builder.append(sdf.format(now));
+        builder.append(": ");
+        builder.append(message);
+        builder.append("\n");
+        textLog.setText(builder.toString());
+    }
+
+    private void requestWifiAuth(String url) {
+//        AsyncHttpClient client = new DefaultAsyncHttpClient();
+//        try {
+//            Response res = client.prepareGet(url).execute().get();
+//            String body = res.getResponseBody();
+//            Parameter param = Parameter.parse(body);
+//            connectWifi(param);
+//        } catch (MalformedURLException e) {
+//            e.printStackTrace();
+//            return;
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//            return;
+//        } catch (ExecutionException e) {
+//            e.printStackTrace();
+//            return;
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            return;
+//        }
+    }
+
     private void connectWifi(final Parameter param) {
         if (mConnection != null && mWifiService != null) {
             mWifiService.connectWifi(param.ssid, param.userId, param.password);
@@ -210,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
                     Log.d(TAG, String.format("サービス接続: %s", componentName.getShortClassName()));
                     WifiService.ServiceBinder binder = (WifiService.ServiceBinder) iBinder;
                     mWifiService = binder.getService();
-                    mWifiService.setWifiStatusChangedListener(mWifiStatusChangedListener);
+                    mWifiService.setWifiStatusChangedListener(MainActivity.this);
                     mWifiService.connectWifi(param.ssid, param.userId, param.password);
                 }
 
@@ -240,12 +183,6 @@ public class MainActivity extends AppCompatActivity {
         throw new Exception("RecordTypeの不一致");
     }
 
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-    }
-
     private void displayParameter(Parameter parameter) {
         textSsid.setText(parameter.ssid);
         textUserId.setText(parameter.userId);
@@ -254,4 +191,70 @@ public class MainActivity extends AppCompatActivity {
         textExpirationTime.setText(StringUtils.formatDate(parameter.expirationTime));
     }
 
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()){
+            case R.id.buttonQrScan:
+                IntentIntegrator integrator = new IntentIntegrator(MainActivity.this);
+                integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE_TYPES);
+                integrator.setPrompt("QRコードを読み込んでください");
+                integrator.setCameraId(0);
+                integrator.setBeepEnabled(true);
+                integrator.setBarcodeImageEnabled(true);
+                integrator.setOrientationLocked(false);
+                integrator.initiateScan();
+                break;
+        }
+    }
+
+    @Override
+    public void onStatusChanged(WifiConfiguration config, int status) {
+        if (status == WifiStatus.CONNECTED) {
+            writeLog("Wi-Fi接続完了");
+            imageStatus.setImageResource(R.drawable.connected);
+        } else if (status == WifiStatus.CONNECTING) {
+            writeLog("Wi-Fi接続中");
+            imageStatus.setImageResource(R.drawable.connecting);
+        } else {
+            writeLog("Wi-Fi切断");
+            imageStatus.setImageResource(R.drawable.disconnected);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if (result != null) {
+            if (result.getContents() == null) {
+                Toast.makeText(this, "Cancelled", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(this, "Scanned: " + result.getContents(), Toast.LENGTH_LONG).show();
+                requestWifiAuth(result.getContents());
+            }
+        } else {
+            super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mConnection != null) {
+            unbindService(mConnection);
+            mConnection = null;
+            mWifiService = null;
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        Log.d(TAG, "onStop");
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        Log.d(TAG, "onDestroy");
+        super.onDestroy();
+    }
 }

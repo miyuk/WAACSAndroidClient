@@ -45,12 +45,6 @@ public class WifiService extends Service {
     };
 
     @Override
-    public void onDestroy() {
-        Log.d(TAG, "onDestroy");
-        super.onDestroy();
-    }
-
-    @Override
     public void onCreate() {
         Log.d(TAG, "onCreate");
         super.onCreate();
@@ -60,13 +54,6 @@ public class WifiService extends Service {
         mBinder = new ServiceBinder();
         ;
         mLastStatus = WifiStatus.UNKNOWN;
-    }
-
-    @Override
-    public boolean onUnbind(Intent intent) {
-        Log.d(TAG, "onUnbind");
-        unregisterReceiver(mStatusChangedReceiver);
-        return super.onUnbind(intent);
     }
 
     @Nullable
@@ -110,8 +97,17 @@ public class WifiService extends Service {
         return mWifiConfig;
     }
 
-    public interface StatusChangedListener {
-        void onStatusChanged(WifiConfiguration config, int status);
+    @Override
+    public boolean onUnbind(Intent intent) {
+        Log.d(TAG, "onUnbind");
+        unregisterReceiver(mStatusChangedReceiver);
+        return super.onUnbind(intent);
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.d(TAG, "onDestroy");
+        super.onDestroy();
     }
 
     public class ServiceBinder extends Binder {
@@ -121,5 +117,10 @@ public class WifiService extends Service {
         public WifiService getService() {
             return WifiService.this;
         }
+    }
+
+    public interface StatusChangedListener {
+        void onStatusChanged(WifiConfiguration config, int status);
+
     }
 }
