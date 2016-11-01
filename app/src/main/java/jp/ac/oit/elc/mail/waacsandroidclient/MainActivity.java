@@ -23,17 +23,15 @@ import android.widget.Toast;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
-//import org.asynchttpclient.AsyncHttpClient;
-//import org.asynchttpclient.DefaultAsyncHttpClient;
-//import org.asynchttpclient.Response;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.ExecutionException;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, WifiService.StatusChangedListener{
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, WifiService.StatusChangedListener, AsyncWebApiClient.OnGetListener{
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String WAACS_MESSAGE_RECORD_TYPE = "waacs:msg";
@@ -121,26 +119,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         textLog.setText(builder.toString());
     }
 
-    private void requestWifiAuth(String url) {
-//        AsyncHttpClient client = new DefaultAsyncHttpClient();
-//        try {
-//            Response res = client.prepareGet(url).execute().get();
-//            String body = res.getResponseBody();
-//            Parameter param = Parameter.parse(body);
-//            connectWifi(param);
-//        } catch (MalformedURLException e) {
-//            e.printStackTrace();
-//            return;
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//            return;
-//        } catch (ExecutionException e) {
-//            e.printStackTrace();
-//            return;
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            return;
-//        }
+    private void requestWifiAuth(URL url) {
+        AsyncWebApiClient client = new AsyncWebApiClient();
+        client.setOnGetListener(this);
+        client.execute(url);
+
     }
 
     private void connectWifi(final Parameter param) {
@@ -229,7 +212,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Toast.makeText(this, "Cancelled", Toast.LENGTH_LONG).show();
             } else {
                 Toast.makeText(this, "Scanned: " + result.getContents(), Toast.LENGTH_LONG).show();
-                requestWifiAuth(result.getContents());
+                try{
+                    URL url = new URL(result.getContents());
+                    requestWifiAuth(url);
+                }catch (MalformedURLException e){
+                    e.printStackTrace();
+                }
             }
         } else {
             super.onActivityResult(requestCode, resultCode, data);
@@ -256,5 +244,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
         super.onDestroy();
+    }
+
+    @Override
+    public void onGet(String body) {
+        try {
+            Parameter param = Parameter.parse(body);
+            connectWifi(param);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
     }
 }
