@@ -26,12 +26,16 @@ public class AsyncWebApiClient extends AsyncTask<URL, Void, String> {
 
     @Override
     protected String doInBackground(URL... urls) {
+        HttpURLConnection conn = null;
         try{
-            HttpURLConnection conn = (HttpURLConnection)urls[0].openConnection();
+            conn = (HttpURLConnection)urls[0].openConnection();
             conn.setRequestMethod("GET");
+            conn.setDoInput(true);
             conn.connect();
-            conn.getResponseCode();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getErrorStream(), conn.getContentEncoding()));
+            if(conn.getResponseCode() != HttpURLConnection.HTTP_OK){
+                throw new IOException("not http ok");
+            }
+            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
             StringBuilder builder = new StringBuilder();
             String line = null;
             while((line = reader.readLine()) != null){
@@ -41,6 +45,11 @@ public class AsyncWebApiClient extends AsyncTask<URL, Void, String> {
             return builder.toString();
         }catch (IOException e){
             e.printStackTrace();
+        }
+        finally {
+            if(conn != null){
+                conn.disconnect();
+            }
         }
         return null;
 
