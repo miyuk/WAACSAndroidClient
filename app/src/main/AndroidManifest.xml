@@ -40,7 +40,11 @@
                     android:scheme="vnd.android.nfc" />
             </intent-filter>
             <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.GET_CONTENT" />
+                <action android:name="android.intent.action.OPEN_DOCUMENT" />
+                <action android:name="android.intent.action.WEB_SEARCH" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:mimeType="application/x-waacs-config" />
