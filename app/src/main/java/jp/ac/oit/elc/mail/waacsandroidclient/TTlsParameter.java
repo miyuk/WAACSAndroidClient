@@ -10,14 +10,15 @@ import org.json.JSONObject;
 public class TtlsParameter {
     public String userId;
     public String password;
-    public static TtlsParameter parse(JSONObject ttlsObj) throws JSONException{
+
+    public static TtlsParameter parse(JSONObject ttlsObj) throws JSONException {
         TtlsParameter param = new TtlsParameter();
         param.userId = ttlsObj.getString(Attribute.USER_ID);
         param.password = ttlsObj.getString(Attribute.PASSWORD);
         return param;
     }
 
-    public static final class Attribute{
+    public static final class Attribute {
         public static final String USER_ID = "userId";
         public static final String PASSWORD = "password";
     }

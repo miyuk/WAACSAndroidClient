@@ -3,6 +3,7 @@ package jp.ac.oit.elc.mail.waacsandroidclient;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.net.Uri;
 import android.net.wifi.WifiConfiguration;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
@@ -19,10 +20,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
-
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,9 +31,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.concurrent.ExecutionException;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, WifiService.StatusChangedListener, AsyncWebApiClient.OnGetListener{
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, WifiService.StatusChangedListener, AsyncWebApiClient.OnGetListener {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String WAACS_MESSAGE_RECORD_TYPE = "waacs:msg";
@@ -42,13 +40,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private WifiService mWifiService;
     private ServiceConnection mConnection;
     private TextView textSsid;
-    private TextView textUserId;
-    private TextView textPassword;
-    private TextView textIssuanceTime;
-    private TextView textExpirationTime;
+    private TextView textEapType;
     private TextView textLog;
     private ImageView imageStatus;
     private Button buttonQrScan;
+    private Button buttonEnquete;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,12 +61,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void assignViews() {
         imageStatus = (ImageView) findViewById(R.id.imageStatus);
         textSsid = (TextView) findViewById(R.id.textSsid);
-        textUserId = (TextView) findViewById(R.id.textUserId);
-        textPassword = (TextView) findViewById(R.id.textPassword);
-        textIssuanceTime = (TextView) findViewById(R.id.textRegistTime);
-        textExpirationTime = (TextView) findViewById(R.id.textExpireTime);
+        textEapType = (TextView) findViewById(R.id.textEapType);
         textLog = (TextView) findViewById(R.id.textLog);
         buttonQrScan = (Button) findViewById(R.id.buttonQrScan);
+        buttonQrScan.setOnClickListener(this);
+        buttonQrScan = (Button) findViewById(R.id.buttonEnquete);
         buttonQrScan.setOnClickListener(this);
     }
 
@@ -172,15 +167,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void displayParameter(Parameter parameter) {
         textSsid.setText(parameter.ssid);
-//        textUserId.setText(parameter.userId);
-//        textPassword.setText(parameter.password);
-        textIssuanceTime.setText(StringUtils.formatDate(parameter.issuanceTime));
-        textExpirationTime.setText(StringUtils.formatDate(parameter.expirationTime));
+        textEapType.setText(parameter.eapType);
     }
 
     @Override
     public void onClick(View view) {
-        switch (view.getId()){
+        switch (view.getId()) {
             case R.id.buttonQrScan:
                 IntentIntegrator integrator = new IntentIntegrator(MainActivity.this);
                 integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE_TYPES);
@@ -190,6 +182,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 integrator.setBarcodeImageEnabled(true);
                 integrator.setOrientationLocked(false);
                 integrator.initiateScan();
+                break;
+            case R.id.buttonEnquete:
+                Uri uri = Uri.parse("https://goo.gl/forms/OzrJedTWgVxwUi3g1");
+                Intent i = new Intent(Intent.ACTION_VIEW, uri);
+                startActivity(i);
                 break;
         }
     }
@@ -216,10 +213,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Toast.makeText(this, "Cancelled", Toast.LENGTH_LONG).show();
             } else {
                 Toast.makeText(this, "Scanned: " + result.getContents(), Toast.LENGTH_LONG).show();
-                try{
+                try {
                     URL url = new URL(result.getContents());
                     requestWifiAuth(url);
-                }catch (MalformedURLException e){
+                } catch (MalformedURLException e) {
                     e.printStackTrace();
                 }
             }
@@ -259,7 +256,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } catch (IOException e) {
             e.printStackTrace();
             return;
-        }catch(JSONException e){
+        } catch (JSONException e) {
             e.printStackTrace();
             return;
         }

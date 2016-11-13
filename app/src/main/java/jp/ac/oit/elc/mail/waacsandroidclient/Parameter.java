@@ -33,23 +33,23 @@ public class Parameter {
         Parameter param = new Parameter();
         param.ssid = json.getString(Attribute.SSID);
         param.eapType = json.getString(Attribute.EAP_TYPE);
-        if(param.eapType.equals(TYPE_TLS)){
+        if (param.eapType.equals(TYPE_TLS)) {
             JSONObject tls = json.getJSONObject(Attribute.TLS_PARAMETER);
-            try{
+            try {
                 param.tlsParameter = TlsParameter.parse(tls);
-            }catch(Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
                 throw new IOException(e.getMessage());
             }
         }
-        if(param.eapType.equals(TYPE_TTLS)){
+        if (param.eapType.equals(TYPE_TTLS)) {
             JSONObject ttls = json.getJSONObject(Attribute.TTLS_PARAMETER);
             param.ttlsParameter = TtlsParameter.parse(ttls);
         }
-        if(json.has(Attribute.ISSUANCE_TIME)){
+        if (json.has(Attribute.ISSUANCE_TIME)) {
             param.issuanceTime = StringUtils.parseDate(json.getString(Attribute.ISSUANCE_TIME));
         }
-        if(json.has(Attribute.EXPIRATION_TIME)) {
+        if (json.has(Attribute.EXPIRATION_TIME)) {
             param.expirationTime = StringUtils.parseDate(json.getString(Attribute.EXPIRATION_TIME));
         }
         return param;
@@ -59,11 +59,10 @@ public class Parameter {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append(String.format("ssid: %s eapType: %s\n", ssid, eapType));
-        if(eapType.equals(TYPE_TLS)){
+        if (eapType.equals(TYPE_TLS)) {
             builder.append(String.format("tls parameter: name: %s common name: %s key: %s passphrase: %s", tlsParameter.clientCertificateName,
                     tlsParameter.clientCertificate.getSubjectDN().toString(), tlsParameter.clientPrivateKey.getFormat(), tlsParameter.passphrase));
-        }
-        else if(eapType.equals(TYPE_TTLS)){
+        } else if (eapType.equals(TYPE_TTLS)) {
             builder.append(String.format("ttls parameter: userId: %s password: %s", ttlsParameter.userId, ttlsParameter.password));
         }
         return builder.toString();

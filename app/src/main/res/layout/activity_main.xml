@@ -16,16 +16,17 @@
         android:layout_alignParentTop="true"
         android:orientation="vertical"
         android:weightSum="1">
+
         <Button
             android:id="@+id/buttonQrScan"
-            android:text="QR読み取り"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-             />
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:text="QR読み取り" />
+
         <ImageView
             android:id="@+id/imageStatus"
             android:layout_width="wrap_content"
-            android:layout_height="200dp"
+            android:layout_height="100dp"
             android:contentDescription="statusImage"
             android:scaleType="fitCenter"
             android:src="@drawable/disconnected" />
@@ -38,13 +39,15 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="SSID:" />
+                android:text="SSID:"
+                android:textSize="18sp" />
 
             <TextView
                 android:id="@+id/textSsid"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="" />
+                android:text=""
+                android:textSize="18sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -55,76 +58,21 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="User ID:" />
+                android:text="EAP type:"
+                android:textSize="18sp" />
 
             <TextView
-                android:id="@+id/textUserId"
-                android:layout_width="wrap_content"
+                android:id="@+id/textEapType"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="" />
+                android:text=""
+                android:textSize="18sp" />
         </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Password:" />
-
-            <TextView
-                android:id="@+id/textPassword"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="RegistTime:" />
-
-            <TextView
-                android:id="@+id/textRegistTime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="ExpireTime:" />
-
-            <TextView
-                android:id="@+id/textExpireTime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/textView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Log:" />
 
         <ScrollView
             android:id="@+id/scrollView"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="100dp"
             android:fillViewport="true">
 
             <TextView
@@ -134,6 +82,11 @@
                 android:background="@drawable/border" />
         </ScrollView>
 
+        <Button
+            android:id="@+id/buttonEnquete"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:text="アンケート" />
     </LinearLayout>
 
 </RelativeLayout>

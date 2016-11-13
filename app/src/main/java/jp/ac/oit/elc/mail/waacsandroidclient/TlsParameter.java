@@ -26,7 +26,8 @@ public class TlsParameter {
     public X509Certificate clientCertificate;
     public PrivateKey clientPrivateKey;
     public String passphrase;
-    public static TlsParameter parse(JSONObject tlsObj) throws JSONException, KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException{
+
+    public static TlsParameter parse(JSONObject tlsObj) throws JSONException, KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException {
         TlsParameter param = new TlsParameter();
         param.clientCertificateName = tlsObj.getString(Attribute.ClientCertificateName);
         param.passphrase = tlsObj.getString(Attribute.Passphrase);
@@ -34,16 +35,16 @@ public class TlsParameter {
         String contentBase64 = tlsObj.getString(Attribute.ClientCertificateContent);
         byte[] content = Base64.decode(contentBase64, Base64.DEFAULT);
         MemoryFile mf = new MemoryFile(param.clientCertificateName, content.length);
-        try(OutputStream output = mf.getOutputStream()){
+        try (OutputStream output = mf.getOutputStream()) {
             output.write(content);
             output.flush();
         }
         KeyStore ks = KeyStore.getInstance("PKCS12");
-        try(InputStream input = mf.getInputStream()) {
+        try (InputStream input = mf.getInputStream()) {
             ks.load(input, param.passphrase.toCharArray());
             String alias = ks.aliases().nextElement();
-            param.clientCertificate = (X509Certificate)ks.getCertificate(alias);
-            param.clientPrivateKey = (PrivateKey)ks.getKey(alias, param.passphrase.toCharArray());
+            param.clientCertificate = (X509Certificate) ks.getCertificate(alias);
+            param.clientPrivateKey = (PrivateKey) ks.getKey(alias, param.passphrase.toCharArray());
         } catch (UnrecoverableKeyException e) {
             e.printStackTrace();
         }
