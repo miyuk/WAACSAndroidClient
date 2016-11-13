@@ -24,6 +24,9 @@ import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -128,7 +131,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void connectWifi(final Parameter param) {
         if (mConnection != null && mWifiService != null) {
-            mWifiService.connectWifi(param.ssid, param.userId, param.password);
+            mWifiService.connectWifi(param);
         } else {
             mConnection = new ServiceConnection() {
                 @Override
@@ -137,7 +140,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     WifiService.ServiceBinder binder = (WifiService.ServiceBinder) iBinder;
                     mWifiService = binder.getService();
                     mWifiService.setWifiStatusChangedListener(MainActivity.this);
-                    mWifiService.connectWifi(param.ssid, param.userId, param.password);
+                    mWifiService.connectWifi(param);
                 }
 
                 @Override
@@ -157,7 +160,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (record.getTnf() == NdefRecord.TNF_EXTERNAL_TYPE && WAACS_MESSAGE_RECORD_TYPE.equals(new String(record.getType()))) {
                 String jsonText = new String(record.getPayload());
                 try {
-                    return Parameter.parse(jsonText);
+                    JSONObject json = new JSONObject(jsonText);
+                    return Parameter.parse(json);
                 } catch (IOException e) {
                     continue;
                 }
@@ -168,8 +172,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void displayParameter(Parameter parameter) {
         textSsid.setText(parameter.ssid);
-        textUserId.setText(parameter.userId);
-        textPassword.setText(parameter.password);
+//        textUserId.setText(parameter.userId);
+//        textPassword.setText(parameter.password);
         textIssuanceTime.setText(StringUtils.formatDate(parameter.issuanceTime));
         textExpirationTime.setText(StringUtils.formatDate(parameter.expirationTime));
     }
@@ -249,9 +253,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onGet(String body) {
         try {
-            Parameter param = Parameter.parse(body);
+            JSONObject json = new JSONObject(body);
+            Parameter param = Parameter.parse(json);
             connectWifi(param);
         } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }catch(JSONException e){
             e.printStackTrace();
             return;
         }

@@ -1,95 +1,83 @@
 package jp.ac.oit.elc.mail.waacsandroidclient;
 
-import android.util.JsonReader;
-import android.util.JsonWriter;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.util.Date;
 
 /**
  * Created by e1611100 on 15/08/25.
  */
 public class Parameter {
+    public static final String TYPE_TLS = "EAP-TLS";
+    public static final String TYPE_TTLS = "EAP-TTLS";
+
     public String ssid;
-    public String userId;
-    public String password;
+    public String eapType;
     public Date issuanceTime;
     public Date expirationTime;
+    public TlsParameter tlsParameter;
+    public TtlsParameter ttlsParameter;
 
     public Parameter() {
         ssid = null;
-        userId = null;
-        password = null;
+        eapType = null;
         issuanceTime = null;
         expirationTime = null;
+        tlsParameter = null;
+        ttlsParameter = null;
     }
 
-    public static Parameter parse(String jsonText) throws IOException {
-        JsonReader reader = new JsonReader(new StringReader(jsonText));
-        Parameter parameter = new Parameter();
-        reader.beginObject();
-        while (reader.hasNext()) {
-            String name = reader.nextName();
-            if (Attribute.SSID.equals(name)) {
-                parameter.ssid = reader.nextString();
-            } else if (Attribute.USER_ID.equals(name)) {
-                parameter.userId = reader.nextString();
-            } else if (Attribute.PASSWORD.equals(name)) {
-                parameter.password = reader.nextString();
-            } else if (Attribute.ISSUANCE_TIME.equals(name)) {
-                parameter.issuanceTime = StringUtils.parseDate(reader.nextString());
-            } else if (Attribute.EXPIRATION_TIME.equals(name)) {
-                parameter.expirationTime = StringUtils.parseDate(reader.nextString());
-            } else {
-                reader.skipValue();
+    public static Parameter parse(JSONObject json) throws JSONException, IOException {
+        Parameter param = new Parameter();
+        param.ssid = json.getString(Attribute.SSID);
+        param.eapType = json.getString(Attribute.EAP_TYPE);
+        if(param.eapType.equals(TYPE_TLS)){
+            JSONObject tls = json.getJSONObject(Attribute.TLS_PARAMETER);
+            try{
+                param.tlsParameter = TlsParameter.parse(tls);
+            }catch(Exception e){
+                e.printStackTrace();
+                throw new IOException(e.getMessage());
             }
         }
-        reader.endObject();
-        return parameter;
-    }
-
-    public String toJson() {
-        StringWriter stringWriter = new StringWriter();
-        JsonWriter jsonWriter = new JsonWriter(stringWriter);
-        try {
-            jsonWriter.beginObject();
-            if (ssid != null) {
-                jsonWriter.name(Attribute.SSID).value(ssid);
-            }
-            if (userId != null) {
-                jsonWriter.name(Attribute.USER_ID).value(userId);
-            }
-            if (password != null) {
-                jsonWriter.name(Attribute.PASSWORD).value(password);
-            }
-            if (issuanceTime != null) {
-                jsonWriter.name(Attribute.ISSUANCE_TIME).value(StringUtils.formatDate(issuanceTime));
-            }
-            if (expirationTime != null) {
-                jsonWriter.name(Attribute.EXPIRATION_TIME).value(StringUtils.formatDate(expirationTime));
-            }
-            jsonWriter.endObject();
-            jsonWriter.close();
-            return stringWriter.toString();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+        if(param.eapType.equals(TYPE_TTLS)){
+            JSONObject ttls = json.getJSONObject(Attribute.TTLS_PARAMETER);
+            param.ttlsParameter = TtlsParameter.parse(ttls);
         }
+        if(json.has(Attribute.ISSUANCE_TIME)){
+            param.issuanceTime = StringUtils.parseDate(json.getString(Attribute.ISSUANCE_TIME));
+        }
+        if(json.has(Attribute.EXPIRATION_TIME)) {
+            param.expirationTime = StringUtils.parseDate(json.getString(Attribute.EXPIRATION_TIME));
+        }
+        return param;
     }
 
     @Override
     public String toString() {
-        return String.format("ssid: %s, user_id: %s, password: %s, issuance_time: %s, expiration_time: %s", ssid, userId, password, issuanceTime.toString(), expirationTime.toString());
+        StringBuilder builder = new StringBuilder();
+        builder.append(String.format("ssid: %s eapType: %s\n", ssid, eapType));
+        if(eapType.equals(TYPE_TLS)){
+            builder.append(String.format("tls parameter: name: %s common name: %s key: %s passphrase: %s", tlsParameter.clientCertificateName,
+                    tlsParameter.clientCertificate.getSubjectDN().toString(), tlsParameter.clientPrivateKey.getFormat(), tlsParameter.passphrase));
+        }
+        else if(eapType.equals(TYPE_TTLS)){
+            builder.append(String.format("ttls parameter: userId: %s password: %s", ttlsParameter.userId, ttlsParameter.password));
+        }
+        return builder.toString();
     }
 
     public static final class Attribute {
         public static final String SSID = "ssid";
-        public static final String USER_ID = "userId";
-        public static final String PASSWORD = "password";
+        public static final String EAP_TYPE = "eapType";
+        public static final String TLS_PARAMETER = "tlsParameter";
+        public static final String TTLS_PARAMETER = "ttlsParameter";
+
         public static final String ISSUANCE_TIME = "issuanceTime";
         public static final String EXPIRATION_TIME = "expirationTime";
     }
+
+
 }
