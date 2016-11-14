@@ -48,6 +48,7 @@ public class TlsParameter {
         } catch (UnrecoverableKeyException e) {
             e.printStackTrace();
         }
+        mf.close();
         return param;
     }
 

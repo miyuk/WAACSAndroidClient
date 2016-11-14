@@ -94,6 +94,14 @@ public class WifiService extends Service {
 
     public boolean connectWifi(Parameter param) {
         WifiConfiguration config = parseWifiConfiguration(param);
+        for (WifiConfiguration c : mWifiManager.getConfiguredNetworks()) {
+            if (c.SSID.equals(config.SSID)) {
+                mWifiManager.disableNetwork(c.networkId);
+                mWifiManager.removeNetwork(c.networkId);
+                mWifiManager.saveConfiguration();
+                break;
+            }
+        }
         int networkId = mWifiManager.addNetwork(config);
         if (networkId < 0) {
             Log.e(TAG, "ネットワーク設定の追加失敗");
