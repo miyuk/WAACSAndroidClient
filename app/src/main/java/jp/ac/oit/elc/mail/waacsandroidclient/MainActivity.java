@@ -65,8 +65,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         textLog = (TextView) findViewById(R.id.textLog);
         buttonQrScan = (Button) findViewById(R.id.buttonQrScan);
         buttonQrScan.setOnClickListener(this);
-        buttonQrScan = (Button) findViewById(R.id.buttonEnquete);
-        buttonQrScan.setOnClickListener(this);
+        buttonEnquete = (Button) findViewById(R.id.buttonEnquete);
+        buttonEnquete.setOnClickListener(this);
     }
 
     @Override
@@ -82,19 +82,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             //IntentからNDEFメッセージを取り出し
             Parcelable[] rawMessages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
             NdefMessage ndefMessage = (NdefMessage) rawMessages[0];
-            Parameter param = null;
+            URL url = null;
             try {
-                param = parseWaacsMessage(ndefMessage);
+                url = parseWaacsMessage(ndefMessage);
+                requestWifiAuth(url);
             } catch (Exception e) {
                 e.printStackTrace();
                 writeLog("NFC受信エラー");
                 return;
             }
-            //受け取ったパラメータを画面表示
-            displayParameter(param);
-            //パラメータを使ってWifi接続
-            writeLog("Wi-Fi接続処理開始");
-            connectWifi(param);
         }
     }
 
@@ -115,13 +111,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         builder.append(message);
         builder.append("\n");
         textLog.setText(builder.toString());
+        Log.d(TAG, builder.toString());
     }
 
     private void requestWifiAuth(URL url) {
         AsyncWebApiClient client = new AsyncWebApiClient();
         client.setOnGetListener(this);
         client.execute(url);
-
+        writeLog(String.format("Wi-Fi認証情報要求 URL: %s".format(url.toString())));
     }
 
     private void connectWifi(final Parameter param) {
@@ -149,17 +146,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private Parameter parseWaacsMessage(NdefMessage ndefMessage) throws Exception {
+    private URL parseWaacsMessage(NdefMessage ndefMessage) throws Exception {
         //NDEF Messageがext:waacs:msgか確認
         for (NdefRecord record : ndefMessage.getRecords()) {
             if (record.getTnf() == NdefRecord.TNF_EXTERNAL_TYPE && WAACS_MESSAGE_RECORD_TYPE.equals(new String(record.getType()))) {
                 String jsonText = new String(record.getPayload());
-                try {
-                    JSONObject json = new JSONObject(jsonText);
-                    return Parameter.parse(json);
-                } catch (IOException e) {
-                    continue;
-                }
+                return new URL(jsonText);
             }
         }
         throw new Exception("RecordTypeの不一致");
@@ -194,13 +186,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onStatusChanged(WifiConfiguration config, int status) {
         if (status == WifiStatus.CONNECTED) {
-            writeLog("Wi-Fi接続完了");
+            writeLog(String.format("Wi-Fi接続完了: %s", config.SSID));
             imageStatus.setImageResource(R.drawable.connected);
         } else if (status == WifiStatus.CONNECTING) {
-            writeLog("Wi-Fi接続中");
+            writeLog(String.format("Wi-Fi接続中: %s", config.SSID));
             imageStatus.setImageResource(R.drawable.connecting);
         } else {
-            writeLog("Wi-Fi切断");
+            writeLog(String.format("Wi-Fi切断: %s", config.SSID));
             imageStatus.setImageResource(R.drawable.disconnected);
         }
     }
@@ -208,21 +200,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-        if (result != null) {
-            if (result.getContents() == null) {
-                Toast.makeText(this, "Cancelled", Toast.LENGTH_LONG).show();
-            } else {
-                Toast.makeText(this, "Scanned: " + result.getContents(), Toast.LENGTH_LONG).show();
-                try {
-                    URL url = new URL(result.getContents());
-                    requestWifiAuth(url);
-                } catch (MalformedURLException e) {
-                    e.printStackTrace();
-                }
-            }
-        } else {
-            super.onActivityResult(requestCode, resultCode, data);
+        if (result == null || result.getContents() == null) {
+            Toast.makeText(this, "QR読み取りキャンセル", Toast.LENGTH_LONG).show();
+            return;
         }
+        try {
+            URL url = new URL(result.getContents());
+            requestWifiAuth(url);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override
@@ -250,8 +238,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onGet(String body) {
         try {
+            if(body == null){
+                Toast.makeText(this, "サーバに接続できませんでした", Toast.LENGTH_LONG).show();
+                writeLog(String.format("ネットワークエラー"));
+                return;
+            }
             JSONObject json = new JSONObject(body);
             Parameter param = Parameter.parse(json);
+            writeLog(String.format("Wi-Fi認証情報取得 SSID: %s EAP-TYPE: %s", param.ssid, param.eapType));
+            displayParameter(param);
             connectWifi(param);
         } catch (IOException e) {
             e.printStackTrace();
