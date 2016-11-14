@@ -8,8 +8,8 @@ android {
         applicationId "jp.ac.oit.elc.mail.waacsandroidclient"
         minSdkVersion 19
         targetSdkVersion 23
-        versionCode 4
-        versionName "2.0"
+        versionCode 5
+        versionName "2.1"
     }
     buildTypes {
         release {
