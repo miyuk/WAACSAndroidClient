@@ -123,7 +123,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void connectWifi(final Parameter param) {
         if (mConnection != null && mWifiService != null) {
-            mWifiService.connectWifi(param);
+            if (!mWifiService.connectWifi(param)) {
+                Toast.makeText(this, "認証情報を追加できませんでした。\nロック画面を設定してるか確認してください", Toast.LENGTH_SHORT).show();
+                writeLog("Wi-Fi接続エラー");
+            }
+            ;
         } else {
             mConnection = new ServiceConnection() {
                 @Override
@@ -132,7 +136,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     WifiService.ServiceBinder binder = (WifiService.ServiceBinder) iBinder;
                     mWifiService = binder.getService();
                     mWifiService.setWifiStatusChangedListener(MainActivity.this);
-                    mWifiService.connectWifi(param);
+                    if (!mWifiService.connectWifi(param)) {
+                        Toast.makeText(MainActivity.this, "認証情報を追加できませんでした。\nロック画面を設定してるか確認してください", Toast.LENGTH_SHORT).show();
+                        writeLog("Wi-Fi接続エラー");
+                    }
                 }
 
                 @Override
@@ -238,7 +245,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onGet(String body) {
         try {
-            if(body == null){
+            if (body == null) {
                 Toast.makeText(this, "サーバに接続できませんでした", Toast.LENGTH_LONG).show();
                 writeLog(String.format("ネットワークエラー"));
                 return;
