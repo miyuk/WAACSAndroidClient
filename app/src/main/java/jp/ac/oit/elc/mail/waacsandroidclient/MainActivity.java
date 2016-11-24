@@ -3,8 +3,10 @@ package jp.ac.oit.elc.mail.waacsandroidclient;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
@@ -37,7 +39,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String WAACS_MESSAGE_RECORD_TYPE = "waacs:msg";
     private NfcAdapter mNfcAdapter;
+    private boolean mIsNfcExist;
     private WifiService mWifiService;
+    private WifiManager mWifiManager;
     private ServiceConnection mConnection;
     private TextView textSsid;
     private TextView textEapType;
@@ -45,6 +49,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ImageView imageStatus;
     private Button buttonQrScan;
     private Button buttonEnquete;
+    private TextView textWifiStatus;
+    private TextView textNfcStatus;
+    private Button buttonNfcSetting;
+    private Button buttonWifiSetting;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,9 +61,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         assignViews();
         mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
-        if (!mNfcAdapter.isEnabled()) {
-            startActivity(new Intent(Settings.ACTION_NFC_SETTINGS));
-        }
+        mIsNfcExist = getPackageManager().hasSystemFeature(PackageManager.FEATURE_NFC);
+        mWifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
     }
 
     private void assignViews() {
@@ -67,12 +74,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         buttonQrScan.setOnClickListener(this);
         buttonEnquete = (Button) findViewById(R.id.buttonEnquete);
         buttonEnquete.setOnClickListener(this);
+        textWifiStatus = (TextView) findViewById(R.id.textWifiStatus);
+        textNfcStatus = (TextView) findViewById(R.id.textNfcStatus);
+        buttonNfcSetting = (Button) findViewById(R.id.buttonOpenNfcSetting);
+        buttonNfcSetting.setOnClickListener(this);
+        buttonWifiSetting = (Button) findViewById(R.id.buttonOpenWiFiSetting);
+        buttonWifiSetting.setOnClickListener(this);
     }
 
     @Override
     protected void onResume() {
         Log.d(TAG, "onResume");
         super.onResume();
+        String nfcStatus = mIsNfcExist ? (mNfcAdapter.isEnabled() ? "有効" : "無効") : "非搭載";
+        String wifiStatus = mWifiManager.isWifiEnabled() ? "有効" : "無効";
+        textNfcStatus.setText(nfcStatus);
+        textWifiStatus.setText(wifiStatus);
+        buttonNfcSetting.setEnabled(mIsNfcExist);
         //intent内のNDEFメッセージを取得後、次のintentのためにnullにする
         Intent intent = getIntent();
         setIntent(null);
@@ -127,7 +145,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Toast.makeText(this, "認証情報を追加できませんでした。\nロック画面を設定してるか確認してください", Toast.LENGTH_SHORT).show();
                 writeLog("Wi-Fi接続エラー");
             }
-            ;
         } else {
             mConnection = new ServiceConnection() {
                 @Override
@@ -187,7 +204,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Intent i = new Intent(Intent.ACTION_VIEW, uri);
                 startActivity(i);
                 break;
+            case R.id.buttonOpenNfcSetting:
+                startActivity(new Intent(Settings.ACTION_NFC_SETTINGS));
+                break;
+            case R.id.buttonOpenWiFiSetting:
+                startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+                break;
         }
+
     }
 
     @Override
