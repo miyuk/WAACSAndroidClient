@@ -7,9 +7,9 @@ android {
     defaultConfig {
         applicationId "jp.ac.oit.elc.mail.waacsandroidclient"
         minSdkVersion 19
-        targetSdkVersion 23
-        versionCode 6
-        versionName "2.2"
+        targetSdkVersion 24
+        versionCode 1
+        versionName "1.0"
     }
     buildTypes {
         release {
@@ -24,9 +24,4 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:appcompat-v7:24.1.0'
     compile 'com.journeyapps:zxing-android-embedded:3.4.0'
-//    compile 'com.google.zxing:core:3.3.0'
-//    compile 'com.google.zxing:android-integration:3.3.0'
-//    compile 'com.google.android.gms:play-services-vision:9.8.0'
-
-
 }
