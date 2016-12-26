@@ -93,6 +93,9 @@ public class WifiService extends Service {
     }
 
     public boolean connectWifi(Parameter param) {
+        if(!mWifiManager.isWifiEnabled()){
+            mWifiManager.setWifiEnabled(true);
+        }
         WifiConfiguration config = parseWifiConfiguration(param);
         for (WifiConfiguration c : mWifiManager.getConfiguredNetworks()) {
             if (c.SSID.equals(config.SSID)) {
