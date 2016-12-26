@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiConfiguration.KeyMgmt;
 import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -44,6 +45,28 @@ public class WifiService extends Service {
         }
     };
 
+    public static WifiConfiguration parseWifiConfiguration(Parameter param) {
+        WifiConfiguration config = new WifiConfiguration();
+        config.SSID = "\"" + param.ssid + "\"";
+        config.status = WifiConfiguration.Status.ENABLED;
+        config.allowedKeyManagement.set(KeyMgmt.WPA_EAP);
+        config.allowedKeyManagement.set(KeyMgmt.IEEE8021X);
+        config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_EAP);
+        WifiEnterpriseConfig eapConfig = new WifiEnterpriseConfig();
+        if (param.eapType.equals(Parameter.TYPE_TLS)) {
+            eapConfig.setEapMethod(WifiEnterpriseConfig.Eap.TLS);
+            eapConfig.setClientKeyEntry(param.tlsParameter.clientPrivateKey, param.tlsParameter.clientCertificate);
+            eapConfig.setIdentity(param.tlsParameter.clientCertificateName);
+        } else if (param.eapType.equals(Parameter.TYPE_TTLS)) {
+            eapConfig.setEapMethod(WifiEnterpriseConfig.Eap.TTLS);
+            eapConfig.setPhase2Method(WifiEnterpriseConfig.Phase2.PAP);
+            eapConfig.setIdentity(param.ttlsParameter.userId);
+            eapConfig.setPassword(param.ttlsParameter.password);
+        }
+        config.enterpriseConfig = eapConfig;
+        return config;
+    }
+
     @Override
     public void onCreate() {
         Log.d(TAG, "onCreate");
@@ -69,17 +92,16 @@ public class WifiService extends Service {
         mStatusChangedListener = listener;
     }
 
-    public boolean connectWifi(String ssid, String userId, String password) {
-        Log.d(TAG, String.format("ssid: %s, userId: %s, password: %s", ssid, userId, password));
-        WifiConfiguration config = new WifiConfiguration();
-        WifiEnterpriseConfig eapConfig = new WifiEnterpriseConfig();
-        config.SSID = "\"" + ssid + "\"";
-        config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_EAP);
-        eapConfig.setIdentity(userId);
-        eapConfig.setPassword(password);
-        eapConfig.setEapMethod(WifiEnterpriseConfig.Eap.TTLS);
-        eapConfig.setPhase2Method(WifiEnterpriseConfig.Phase2.PAP);
-        config.enterpriseConfig = eapConfig;
+    public boolean connectWifi(Parameter param) {
+        WifiConfiguration config = parseWifiConfiguration(param);
+        for (WifiConfiguration c : mWifiManager.getConfiguredNetworks()) {
+            if (c.SSID.equals(config.SSID)) {
+                mWifiManager.disableNetwork(c.networkId);
+                mWifiManager.removeNetwork(c.networkId);
+                mWifiManager.saveConfiguration();
+                break;
+            }
+        }
         int networkId = mWifiManager.addNetwork(config);
         if (networkId < 0) {
             Log.e(TAG, "ネットワーク設定の追加失敗");
@@ -110,6 +132,11 @@ public class WifiService extends Service {
         super.onDestroy();
     }
 
+    public interface StatusChangedListener {
+        void onStatusChanged(WifiConfiguration config, int status);
+
+    }
+
     public class ServiceBinder extends Binder {
         public ServiceBinder() {
         }
@@ -117,10 +144,5 @@ public class WifiService extends Service {
         public WifiService getService() {
             return WifiService.this;
         }
-    }
-
-    public interface StatusChangedListener {
-        void onStatusChanged(WifiConfiguration config, int status);
-
     }
 }

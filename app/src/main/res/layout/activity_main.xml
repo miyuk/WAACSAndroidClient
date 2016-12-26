@@ -16,19 +16,46 @@
         android:layout_alignParentTop="true"
         android:orientation="vertical"
         android:weightSum="1">
-        <Button
-            android:id="@+id/buttonQrScan"
-            android:text="QR読み取り"
-            android:layout_width="wrap_content"
+
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-             />
-        <ImageView
-            android:id="@+id/imageStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="200dp"
-            android:contentDescription="statusImage"
-            android:scaleType="fitCenter"
-            android:src="@drawable/disconnected" />
+            android:orientation="horizontal">
+
+
+            <ImageView
+                android:id="@+id/imageStatus"
+                android:layout_width="200dp"
+                android:layout_height="100dp"
+                android:layout_weight="1"
+                android:contentDescription="statusImage"
+                android:scaleType="fitCenter"
+                android:src="@drawable/disconnected" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <Button
+                    android:id="@+id/buttonQrScan"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_weight="1"
+                    android:text="QR読み取り"
+                    android:textSize="18sp" />
+
+                <Button
+                    android:id="@+id/buttonEnquete"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_weight="1"
+                    android:text="アンケート"
+                    android:textSize="18sp" />
+
+            </LinearLayout>
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -36,15 +63,66 @@
             android:orientation="horizontal">
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="120dp"
                 android:layout_height="wrap_content"
-                android:text="SSID:" />
+                android:text="NFC Status:"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/textNfcStatus"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/buttonOpenNfcSetting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="NFC設定"
+                android:textSize="18sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="120dp"
+                android:layout_height="wrap_content"
+                android:text="Wi-Fi Status:"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/textWifiStatus"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:textSize="18sp" />
+
+            <Button
+                android:id="@+id/buttonOpenWiFiSetting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Wi-Fi設定"
+                android:textSize="18sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="120dp"
+                android:layout_height="wrap_content"
+                android:text="SSID:"
+                android:textSize="18sp" />
 
             <TextView
                 android:id="@+id/textSsid"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="" />
+                android:textSize="18sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -53,73 +131,23 @@
             android:orientation="horizontal">
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="120dp"
                 android:layout_height="wrap_content"
-                android:text="User ID:" />
+                android:text="EAP type:"
+                android:textSize="18sp" />
 
             <TextView
-                android:id="@+id/textUserId"
-                android:layout_width="wrap_content"
+                android:id="@+id/textEapType"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="" />
+                android:textSize="18sp" />
+
+
         </LinearLayout>
 
-        <LinearLayout
+        <Space
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Password:" />
-
-            <TextView
-                android:id="@+id/textPassword"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="RegistTime:" />
-
-            <TextView
-                android:id="@+id/textRegistTime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="ExpireTime:" />
-
-            <TextView
-                android:id="@+id/textExpireTime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/textView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Log:" />
+            android:layout_height="10dp" />
 
         <ScrollView
             android:id="@+id/scrollView"

@@ -3,7 +3,10 @@ package jp.ac.oit.elc.mail.waacsandroidclient;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
@@ -19,33 +22,37 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.concurrent.ExecutionException;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, WifiService.StatusChangedListener, AsyncWebApiClient.OnGetListener{
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, WifiService.StatusChangedListener, AsyncWebApiClient.OnGetListener {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String WAACS_MESSAGE_RECORD_TYPE = "waacs:msg";
     private NfcAdapter mNfcAdapter;
+    private boolean mIsNfcExist;
     private WifiService mWifiService;
+    private WifiManager mWifiManager;
     private ServiceConnection mConnection;
     private TextView textSsid;
-    private TextView textUserId;
-    private TextView textPassword;
-    private TextView textIssuanceTime;
-    private TextView textExpirationTime;
+    private TextView textEapType;
     private TextView textLog;
     private ImageView imageStatus;
     private Button buttonQrScan;
+    private Button buttonEnquete;
+    private TextView textWifiStatus;
+    private TextView textNfcStatus;
+    private Button buttonNfcSetting;
+    private Button buttonWifiSetting;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,27 +61,36 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
         assignViews();
         mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
-        if (!mNfcAdapter.isEnabled()) {
-            startActivity(new Intent(Settings.ACTION_NFC_SETTINGS));
-        }
+        mIsNfcExist = getPackageManager().hasSystemFeature(PackageManager.FEATURE_NFC);
+        mWifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
     }
 
     private void assignViews() {
         imageStatus = (ImageView) findViewById(R.id.imageStatus);
         textSsid = (TextView) findViewById(R.id.textSsid);
-        textUserId = (TextView) findViewById(R.id.textUserId);
-        textPassword = (TextView) findViewById(R.id.textPassword);
-        textIssuanceTime = (TextView) findViewById(R.id.textRegistTime);
-        textExpirationTime = (TextView) findViewById(R.id.textExpireTime);
+        textEapType = (TextView) findViewById(R.id.textEapType);
         textLog = (TextView) findViewById(R.id.textLog);
         buttonQrScan = (Button) findViewById(R.id.buttonQrScan);
         buttonQrScan.setOnClickListener(this);
+        buttonEnquete = (Button) findViewById(R.id.buttonEnquete);
+        buttonEnquete.setOnClickListener(this);
+        textWifiStatus = (TextView) findViewById(R.id.textWifiStatus);
+        textNfcStatus = (TextView) findViewById(R.id.textNfcStatus);
+        buttonNfcSetting = (Button) findViewById(R.id.buttonOpenNfcSetting);
+        buttonNfcSetting.setOnClickListener(this);
+        buttonWifiSetting = (Button) findViewById(R.id.buttonOpenWiFiSetting);
+        buttonWifiSetting.setOnClickListener(this);
     }
 
     @Override
     protected void onResume() {
         Log.d(TAG, "onResume");
         super.onResume();
+        String nfcStatus = mIsNfcExist ? (mNfcAdapter.isEnabled() ? "有効" : "無効") : "非搭載";
+        String wifiStatus = mWifiManager.isWifiEnabled() ? "有効" : "無効";
+        textNfcStatus.setText(nfcStatus);
+        textWifiStatus.setText(wifiStatus);
+        buttonNfcSetting.setEnabled(mIsNfcExist);
         //intent内のNDEFメッセージを取得後、次のintentのためにnullにする
         Intent intent = getIntent();
         setIntent(null);
@@ -84,19 +100,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             //IntentからNDEFメッセージを取り出し
             Parcelable[] rawMessages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
             NdefMessage ndefMessage = (NdefMessage) rawMessages[0];
-            Parameter param = null;
+            URL url = null;
             try {
-                param = parseWaacsMessage(ndefMessage);
+                url = parseWaacsMessage(ndefMessage);
+                requestWifiAuth(url);
             } catch (Exception e) {
                 e.printStackTrace();
                 writeLog("NFC受信エラー");
                 return;
             }
-            //受け取ったパラメータを画面表示
-            displayParameter(param);
-            //パラメータを使ってWifi接続
-            writeLog("Wi-Fi接続処理開始");
-            connectWifi(param);
         }
     }
 
@@ -117,18 +129,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         builder.append(message);
         builder.append("\n");
         textLog.setText(builder.toString());
+        Log.d(TAG, builder.toString());
     }
 
     private void requestWifiAuth(URL url) {
         AsyncWebApiClient client = new AsyncWebApiClient();
         client.setOnGetListener(this);
         client.execute(url);
-
+        writeLog(String.format("Wi-Fi認証情報要求 URL: %s".format(url.toString())));
     }
 
     private void connectWifi(final Parameter param) {
         if (mConnection != null && mWifiService != null) {
-            mWifiService.connectWifi(param.ssid, param.userId, param.password);
+            if (!mWifiService.connectWifi(param)) {
+                Toast.makeText(this, "認証情報を追加できませんでした。\nロック画面を設定してるか確認してください", Toast.LENGTH_SHORT).show();
+                writeLog("Wi-Fi接続エラー");
+            }
         } else {
             mConnection = new ServiceConnection() {
                 @Override
@@ -137,7 +153,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     WifiService.ServiceBinder binder = (WifiService.ServiceBinder) iBinder;
                     mWifiService = binder.getService();
                     mWifiService.setWifiStatusChangedListener(MainActivity.this);
-                    mWifiService.connectWifi(param.ssid, param.userId, param.password);
+                    if (!mWifiService.connectWifi(param)) {
+                        Toast.makeText(MainActivity.this, "認証情報を追加できませんでした。\nロック画面を設定してるか確認してください", Toast.LENGTH_SHORT).show();
+                        writeLog("Wi-Fi接続エラー");
+                    }
                 }
 
                 @Override
@@ -151,16 +170,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private Parameter parseWaacsMessage(NdefMessage ndefMessage) throws Exception {
+    private URL parseWaacsMessage(NdefMessage ndefMessage) throws Exception {
         //NDEF Messageがext:waacs:msgか確認
         for (NdefRecord record : ndefMessage.getRecords()) {
             if (record.getTnf() == NdefRecord.TNF_EXTERNAL_TYPE && WAACS_MESSAGE_RECORD_TYPE.equals(new String(record.getType()))) {
                 String jsonText = new String(record.getPayload());
-                try {
-                    return Parameter.parse(jsonText);
-                } catch (IOException e) {
-                    continue;
-                }
+                return new URL(jsonText);
             }
         }
         throw new Exception("RecordTypeの不一致");
@@ -168,15 +183,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void displayParameter(Parameter parameter) {
         textSsid.setText(parameter.ssid);
-        textUserId.setText(parameter.userId);
-        textPassword.setText(parameter.password);
-        textIssuanceTime.setText(StringUtils.formatDate(parameter.issuanceTime));
-        textExpirationTime.setText(StringUtils.formatDate(parameter.expirationTime));
+        textEapType.setText(parameter.eapType);
     }
 
     @Override
     public void onClick(View view) {
-        switch (view.getId()){
+        switch (view.getId()) {
             case R.id.buttonQrScan:
                 IntentIntegrator integrator = new IntentIntegrator(MainActivity.this);
                 integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE_TYPES);
@@ -187,19 +199,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 integrator.setOrientationLocked(false);
                 integrator.initiateScan();
                 break;
+            case R.id.buttonEnquete:
+                Uri uri = Uri.parse("https://goo.gl/forms/OzrJedTWgVxwUi3g1");
+                Intent i = new Intent(Intent.ACTION_VIEW, uri);
+                startActivity(i);
+                break;
+            case R.id.buttonOpenNfcSetting:
+                startActivity(new Intent(Settings.ACTION_NFC_SETTINGS));
+                break;
+            case R.id.buttonOpenWiFiSetting:
+                startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+                break;
         }
+
     }
 
     @Override
     public void onStatusChanged(WifiConfiguration config, int status) {
         if (status == WifiStatus.CONNECTED) {
-            writeLog("Wi-Fi接続完了");
+            writeLog(String.format("Wi-Fi接続完了: %s", config.SSID));
             imageStatus.setImageResource(R.drawable.connected);
         } else if (status == WifiStatus.CONNECTING) {
-            writeLog("Wi-Fi接続中");
+            writeLog(String.format("Wi-Fi接続中: %s", config.SSID));
             imageStatus.setImageResource(R.drawable.connecting);
         } else {
-            writeLog("Wi-Fi切断");
+            writeLog(String.format("Wi-Fi切断: %s", config.SSID));
             imageStatus.setImageResource(R.drawable.disconnected);
         }
     }
@@ -207,21 +231,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-        if (result != null) {
-            if (result.getContents() == null) {
-                Toast.makeText(this, "Cancelled", Toast.LENGTH_LONG).show();
-            } else {
-                Toast.makeText(this, "Scanned: " + result.getContents(), Toast.LENGTH_LONG).show();
-                try{
-                    URL url = new URL(result.getContents());
-                    requestWifiAuth(url);
-                }catch (MalformedURLException e){
-                    e.printStackTrace();
-                }
-            }
-        } else {
-            super.onActivityResult(requestCode, resultCode, data);
+        if (result == null || result.getContents() == null) {
+            Toast.makeText(this, "QR読み取りキャンセル", Toast.LENGTH_LONG).show();
+            return;
         }
+        try {
+            URL url = new URL(result.getContents());
+            requestWifiAuth(url);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override
@@ -249,9 +269,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onGet(String body) {
         try {
-            Parameter param = Parameter.parse(body);
+            if (body == null) {
+                Toast.makeText(this, "サーバに接続できませんでした", Toast.LENGTH_LONG).show();
+                writeLog(String.format("ネットワークエラー"));
+                return;
+            }
+            JSONObject json = new JSONObject(body);
+            Parameter param = Parameter.parse(json);
+            writeLog(String.format("Wi-Fi認証情報取得 SSID: %s EAP-TYPE: %s", param.ssid, param.eapType));
+            displayParameter(param);
             connectWifi(param);
         } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        } catch (JSONException e) {
             e.printStackTrace();
             return;
         }

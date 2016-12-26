@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
 
 /**
  * Created by e1611100 on 2016/10/30.
@@ -19,7 +18,7 @@ public class AsyncWebApiClient extends AsyncTask<URL, Void, String> {
 
     @Override
     protected void onPostExecute(String s) {
-        if(mOnGetListener != null){
+        if (mOnGetListener != null) {
             mOnGetListener.onGet(s);
         }
     }
@@ -27,27 +26,26 @@ public class AsyncWebApiClient extends AsyncTask<URL, Void, String> {
     @Override
     protected String doInBackground(URL... urls) {
         HttpURLConnection conn = null;
-        try{
-            conn = (HttpURLConnection)urls[0].openConnection();
+        try {
+            conn = (HttpURLConnection) urls[0].openConnection();
             conn.setRequestMethod("GET");
             conn.setDoInput(true);
             conn.connect();
-            if(conn.getResponseCode() != HttpURLConnection.HTTP_OK){
+            if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
                 throw new IOException("not http ok");
             }
             BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
             StringBuilder builder = new StringBuilder();
             String line = null;
-            while((line = reader.readLine()) != null){
+            while ((line = reader.readLine()) != null) {
                 builder.append(line);
             }
             reader.close();
             return builder.toString();
-        }catch (IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
-        }
-        finally {
-            if(conn != null){
+        } finally {
+            if (conn != null) {
                 conn.disconnect();
             }
         }
@@ -55,10 +53,11 @@ public class AsyncWebApiClient extends AsyncTask<URL, Void, String> {
 
     }
 
-    public void setOnGetListener(OnGetListener listener){
+    public void setOnGetListener(OnGetListener listener) {
         mOnGetListener = listener;
     }
-    public interface OnGetListener{
+
+    public interface OnGetListener {
         void onGet(String body);
     }
 }
