@@ -27,7 +27,6 @@ import com.google.zxing.integration.android.IntentResult;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -100,13 +99,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             //IntentからNDEFメッセージを取り出し
             Parcelable[] rawMessages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
             NdefMessage ndefMessage = (NdefMessage) rawMessages[0];
-            URL url = null;
             try {
-                url = parseWaacsMessage(ndefMessage);
+                URL url = extractTokenUrl(ndefMessage);
                 requestWifiAuth(url);
             } catch (Exception e) {
                 e.printStackTrace();
                 writeLog("NFC受信エラー");
+                writeLog(e.getMessage());
                 return;
             }
         }
@@ -170,15 +169,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private URL parseWaacsMessage(NdefMessage ndefMessage) throws Exception {
+    private URL extractTokenUrl(NdefMessage ndefMessage) throws Exception {
         //NDEF Messageがext:waacs:msgか確認
         for (NdefRecord record : ndefMessage.getRecords()) {
             if (record.getTnf() == NdefRecord.TNF_EXTERNAL_TYPE && WAACS_MESSAGE_RECORD_TYPE.equals(new String(record.getType()))) {
-                String jsonText = new String(record.getPayload());
-                return new URL(jsonText);
+                String urlStr = new String(record.getPayload());
+                Toast.makeText(this, "NFC Scanned" + urlStr, Toast.LENGTH_LONG).show();
+                return new URL(urlStr);
             }
         }
-        throw new Exception("RecordTypeの不一致");
+        throw new Exception("トークンURLが見つかりませんでした");
     }
 
     private void displayParameter(Parameter parameter) {
@@ -240,6 +240,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             requestWifiAuth(url);
         } catch (MalformedURLException e) {
             e.printStackTrace();
+
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
