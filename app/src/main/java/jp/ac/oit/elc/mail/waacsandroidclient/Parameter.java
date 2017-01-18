@@ -19,6 +19,7 @@ public class Parameter {
     public Date expirationTime;
     public TlsParameter tlsParameter;
     public TtlsParameter ttlsParameter;
+    public String connectionNumber;
 
     public Parameter() {
         ssid = null;
@@ -27,6 +28,7 @@ public class Parameter {
         expirationTime = null;
         tlsParameter = null;
         ttlsParameter = null;
+        connectionNumber = null;
     }
 
     public static Parameter parse(JSONObject json) throws JSONException, IOException {
@@ -44,13 +46,21 @@ public class Parameter {
         }
         if (param.eapType.equals(TYPE_TTLS)) {
             JSONObject ttls = json.getJSONObject(Attribute.TTLS_PARAMETER);
-            param.ttlsParameter = TtlsParameter.parse(ttls);
+            try {
+                param.ttlsParameter = TtlsParameter.parse(ttls);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new IOException(e.getMessage());
+            }
         }
         if (json.has(Attribute.ISSUANCE_TIME)) {
             param.issuanceTime = StringUtils.parseDate(json.getString(Attribute.ISSUANCE_TIME));
         }
         if (json.has(Attribute.EXPIRATION_TIME)) {
             param.expirationTime = StringUtils.parseDate(json.getString(Attribute.EXPIRATION_TIME));
+        }
+        if(json.has(Attribute.CONNECTION_NUMBER)){
+            param.connectionNumber = json.getString(Attribute.CONNECTION_NUMBER);
         }
         return param;
     }
@@ -60,11 +70,12 @@ public class Parameter {
         StringBuilder builder = new StringBuilder();
         builder.append(String.format("ssid: %s eapType: %s\n", ssid, eapType));
         if (eapType.equals(TYPE_TLS)) {
-            builder.append(String.format("tls parameter: name: %s common name: %s key: %s passphrase: %s", tlsParameter.clientCertificateName,
+            builder.append(String.format("tls parameter: name: %s common name: %s key: %s passphrase: %s\n", tlsParameter.clientCertificateName,
                     tlsParameter.clientCertificate.getSubjectDN().toString(), tlsParameter.clientPrivateKey.getFormat(), tlsParameter.passphrase));
         } else if (eapType.equals(TYPE_TTLS)) {
-            builder.append(String.format("ttls parameter: userId: %s password: %s", ttlsParameter.userId, ttlsParameter.password));
+            builder.append(String.format("ttls parameter: userId: %s password: %s\n", ttlsParameter.userId, ttlsParameter.password));
         }
+        builder.append(String.format("connection number: %s", connectionNumber));
         return builder.toString();
     }
 
@@ -73,9 +84,9 @@ public class Parameter {
         public static final String EAP_TYPE = "eapType";
         public static final String TLS_PARAMETER = "tlsParameter";
         public static final String TTLS_PARAMETER = "ttlsParameter";
-
         public static final String ISSUANCE_TIME = "issuanceTime";
         public static final String EXPIRATION_TIME = "expirationTime";
+        public static final String CONNECTION_NUMBER = "connectionNumber";
     }
 
 

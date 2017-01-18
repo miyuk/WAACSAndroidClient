@@ -51,9 +51,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button buttonEnquete;
     private TextView textWifiStatus;
     private TextView textNfcStatus;
+    private TextView textConnNumber;
     private Button buttonNfcSetting;
     private Button buttonWifiSetting;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate");
@@ -69,6 +69,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         imageStatus = (ImageView) findViewById(R.id.imageStatus);
         textSsid = (TextView) findViewById(R.id.textSsid);
         textEapType = (TextView) findViewById(R.id.textEapType);
+        textConnNumber = (TextView) findViewById(R.id.textConnNumber);
         textLog = (TextView) findViewById(R.id.textLog);
         buttonQrScan = (Button) findViewById(R.id.buttonQrScan);
         buttonQrScan.setOnClickListener(this);
@@ -185,6 +186,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void displayParameter(Parameter parameter) {
         textSsid.setText(parameter.ssid);
         textEapType.setText(parameter.eapType);
+        textConnNumber.setText(parameter.connectionNumber);
     }
 
     @Override
